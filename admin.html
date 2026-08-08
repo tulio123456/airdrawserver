@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>AirDraw • Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="login" class="card login">
+      <span class="eyebrow">AIRDRAW • SERVER</span>
+      <h1>Admin</h1>
+      <p>Digite a mesma senha definida em <code>ADMIN_PASSWORD</code> na Vercel.</p>
+      <form id="form">
+        <input id="password" type="password" placeholder="Senha" required>
+        <button>Entrar</button>
+      </form>
+      <div id="error" class="error"></div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <header>
+        <div><span class="eyebrow">AIRDRAW</span><h1>Capturas</h1><p id="count"></p></div>
+        <div class="actions"><button id="refresh">Atualizar</button><button id="logout">Sair</button></div>
+      </header>
+      <div id="empty" class="empty hidden">Nenhuma foto recebida ainda.</div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+  </main>
+
+  <dialog id="dialog">
+    <button id="close" class="close">×</button>
+    <img id="preview" alt="Foto">
+  </dialog>
+
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>
