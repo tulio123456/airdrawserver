@@ -1,13 +1,31 @@
-import { put } from "@vercel/blob";
+import { del, list, put } from "@vercel/blob";
 
 function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
+  if (!origin) return null;
+
   const allowed = String(process.env.ALLOWED_ORIGINS || "")
     .split(",")
     .map(x => x.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 
-  return origin && allowed.includes(origin) ? origin : null;
+  if (allowed.includes(origin)) return origin;
+
+  // Também aceita previews Vercel do MESMO projeto configurado, evitando que
+  // um deploy de preview falhe silenciosamente por CORS.
+  try {
+    const current = new URL(origin);
+    if (current.protocol !== "https:") return null;
+    for (const item of allowed) {
+      const base = new URL(item);
+      if (!base.hostname.endsWith(".vercel.app")) continue;
+      const slug = base.hostname.slice(0, -".vercel.app".length);
+      if (current.hostname === `${slug}.vercel.app` || current.hostname.startsWith(`${slug}-`) && current.hostname.endsWith(".vercel.app")) {
+        return origin;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 function cors(origin) {
@@ -80,6 +98,7 @@ export default {
 
       const url = new URL(request.url);
       const session = clean(url.searchParams.get("session"));
+      const recording = clean(url.searchParams.get("recording") || `direct-${Date.now()}`);
       const now = Date.now();
       const inverse = String(9_999_999_999_999 - now).padStart(13, "0");
       const ext = extensionFor(type);
@@ -87,7 +106,7 @@ export default {
       const file = new Blob([bytes], { type: contentType });
 
       const result = await put(
-        `recordings/${inverse}-${now}-${session}.${ext}`,
+        `recordings/${inverse}-${now}-${recording}-${session}.${ext}`,
         file,
         {
           access: "private",
@@ -95,6 +114,15 @@ export default {
           contentType
         }
       );
+
+      // Se o cliente também enviou blocos como fallback, remova-os após o
+      // upload completo para não desperdiçar espaço no Blob.
+      try {
+        const parts = await list({ prefix: `recording-parts/${recording}/`, limit: 200 });
+        if (parts.blobs.length) await del(parts.blobs.map(item => item.url));
+      } catch (cleanupError) {
+        console.warn("recording parts cleanup", cleanupError);
+      }
 
       return Response.json(
         { ok: true, pathname: result.pathname },

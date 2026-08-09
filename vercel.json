@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": false
+  "cleanUrls": false,
+  "functions": {
+    "api/recording-finalize.js": {
+      "maxDuration": 30
+    }
+  }
 }

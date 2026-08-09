@@ -2,11 +2,30 @@ import { put } from "@vercel/blob";
 
 function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
+  if (!origin) return null;
+
   const allowed = String(process.env.ALLOWED_ORIGINS || "")
     .split(",")
     .map(x => x.trim().replace(/\/+$/, ""))
     .filter(Boolean);
-  return origin && allowed.includes(origin) ? origin : null;
+
+  if (allowed.includes(origin)) return origin;
+
+  // Também aceita previews Vercel do MESMO projeto configurado, evitando que
+  // um deploy de preview falhe silenciosamente por CORS.
+  try {
+    const current = new URL(origin);
+    if (current.protocol !== "https:") return null;
+    for (const item of allowed) {
+      const base = new URL(item);
+      if (!base.hostname.endsWith(".vercel.app")) continue;
+      const slug = base.hostname.slice(0, -".vercel.app".length);
+      if (current.hostname === `${slug}.vercel.app` || current.hostname.startsWith(`${slug}-`) && current.hostname.endsWith(".vercel.app")) {
+        return origin;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 function cors(origin) {
@@ -46,8 +65,8 @@ export default {
       const seq = Math.max(0, Math.min(9999, Number(url.searchParams.get("seq") || 0) | 0));
       const mime = normalizeMime(url.searchParams.get("mime"));
       const bytes = await request.arrayBuffer();
-      if (!bytes.byteLength || bytes.byteLength > 512_000) {
-        return Response.json({ error: "Bloco vazio ou grande demais." }, { status: 413, headers: cors(origin) });
+      if (!bytes.byteLength || bytes.byteLength > 2_000_000) {
+        return Response.json({ error: "Bloco vazio ou maior que 2 MB." }, { status: 413, headers: cors(origin) });
       }
 
       const part = new Blob([bytes], { type: "application/octet-stream" });
