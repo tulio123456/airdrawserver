@@ -1,4 +1,4 @@
-import { del, list } from "@vercel/blob";
+import { deleteObject, objectExists, r2Configured } from "../lib/r2.js";
 
 function authorized(request) {
   const expected = String(process.env.ADMIN_PASSWORD || "");
@@ -7,37 +7,20 @@ function authorized(request) {
 
 export default {
   async fetch(request) {
-    if (request.method !== "DELETE") {
-      return Response.json({ error: "Método não permitido" }, { status: 405 });
-    }
-
-    if (!authorized(request)) {
-      return Response.json({ error: "Senha inválida." }, { status: 401 });
-    }
-
+    if (request.method !== "DELETE") return Response.json({ error: "Método não permitido" }, { status: 405 });
+    if (!authorized(request)) return Response.json({ error: "Senha inválida." }, { status: 401 });
+    if (!r2Configured()) return Response.json({ error: "Cloudflare R2 não conectado." }, { status: 500 });
     try {
       const { pathname } = await request.json();
-
-      if (
-        typeof pathname !== "string" ||
-        (!pathname.startsWith("captures/") && !pathname.startsWith("recordings/")) ||
-        pathname.includes("..")
-      ) {
+      if (typeof pathname !== "string" || (!pathname.startsWith("captures/") && !pathname.startsWith("recordings/")) || pathname.includes("..")) {
         return Response.json({ error: "Caminho inválido." }, { status: 400 });
       }
-
-      const result = await list({ prefix: pathname, limit: 5 });
-      const blob = result.blobs.find(x => x.pathname === pathname);
-
-      if (!blob) {
-        return Response.json({ error: "Arquivo não encontrado." }, { status: 404 });
-      }
-
-      await del(blob.url);
-      return Response.json({ ok: true });
+      if (!(await objectExists(pathname))) return Response.json({ error: "Arquivo não encontrado." }, { status: 404 });
+      await deleteObject(pathname);
+      return Response.json({ ok: true, storage: "cloudflare-r2" });
     } catch (error) {
-      console.error(error);
-      return Response.json({ error: "Falha ao excluir." }, { status: 500 });
+      console.error("admin delete r2", error);
+      return Response.json({ error: "Falha ao excluir do Cloudflare R2." }, { status: 500 });
     }
   }
 };

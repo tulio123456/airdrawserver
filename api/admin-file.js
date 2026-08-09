@@ -1,44 +1,30 @@
-import { get } from "@vercel/blob";
+import { objectExists, r2Configured, signedGetUrl } from "../lib/r2.js";
 
 function authorized(request) {
   const expected = String(process.env.ADMIN_PASSWORD || "");
   return expected && request.headers.get("authorization") === `Bearer ${expected}`;
 }
+function validPath(pathname) {
+  return typeof pathname === "string" &&
+    (pathname.startsWith("captures/") || pathname.startsWith("recordings/")) &&
+    !pathname.includes("..");
+}
 
 export default {
   async fetch(request) {
-    if (!authorized(request)) {
-      return new Response("Não autorizado", { status: 401 });
-    }
-
+    if (!authorized(request)) return Response.json({ error: "Não autorizado" }, { status: 401 });
+    if (!r2Configured()) return Response.json({ error: "Cloudflare R2 não conectado." }, { status: 500 });
     const pathname = new URL(request.url).searchParams.get("pathname") || "";
-
-    if ((!pathname.startsWith("captures/") && !pathname.startsWith("recordings/")) || pathname.includes("..")) {
-      return new Response("Caminho inválido", { status: 400 });
-    }
-
+    if (!validPath(pathname)) return Response.json({ error: "Caminho inválido" }, { status: 400 });
     try {
-      const result = await get(pathname, { access: "private" });
-
-      if (!result || result.statusCode === 404) {
-        return new Response("Não encontrado", { status: 404 });
-      }
-
-      if (result.statusCode !== 200) {
-        return new Response("Não encontrado", { status: 404 });
-      }
-
-      return new Response(result.stream, {
-        status: 200,
-        headers: {
-          "Content-Type": result.blob.contentType || "application/octet-stream",
-          "Cache-Control": "private, no-store",
-          "X-Content-Type-Options": "nosniff"
-        }
+      if (!(await objectExists(pathname))) return Response.json({ error: "Não encontrado" }, { status: 404 });
+      const url = await signedGetUrl(pathname, 900);
+      return Response.json({ ok: true, url, expiresIn: 900, storage: "cloudflare-r2" }, {
+        headers: { "Cache-Control": "private, no-store" }
       });
     } catch (error) {
-      console.error(error);
-      return new Response("Erro ao ler Blob", { status: 500 });
+      console.error("admin file r2", error);
+      return Response.json({ error: "Erro ao gerar acesso temporário ao R2." }, { status: 500 });
     }
   }
 };

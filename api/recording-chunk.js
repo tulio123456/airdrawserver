@@ -1,18 +1,10 @@
-import { put } from "@vercel/blob";
+import { putObject, r2Configured } from "../lib/r2.js";
 
 function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
   if (!origin) return null;
-
-  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app")
-    .split(",")
-    .map(x => x.trim().replace(/\/+$/, ""))
-    .filter(Boolean);
-
+  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app").split(",").map(x => x.trim().replace(/\/+$/, "")).filter(Boolean);
   if (allowed.includes(origin)) return origin;
-
-  // Também aceita previews Vercel do MESMO projeto configurado, evitando que
-  // um deploy de preview falhe silenciosamente por CORS.
   try {
     const current = new URL(origin);
     if (current.protocol !== "https:") return null;
@@ -20,32 +12,14 @@ function allowedOrigin(request) {
       const base = new URL(item);
       if (!base.hostname.endsWith(".vercel.app")) continue;
       const slug = base.hostname.slice(0, -".vercel.app".length);
-      if (current.hostname === `${slug}.vercel.app` || current.hostname.startsWith(`${slug}-`) && current.hostname.endsWith(".vercel.app")) {
-        return origin;
-      }
+      if (current.hostname === `${slug}.vercel.app` || (current.hostname.startsWith(`${slug}-`) && current.hostname.endsWith(".vercel.app"))) return origin;
     }
   } catch {}
   return null;
 }
-
-function cors(origin) {
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-    "Vary": "Origin"
-  };
-}
-
-function clean(value, fallback = "x") {
-  const out = String(value || fallback).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
-  return out || fallback;
-}
-
-function normalizeMime(value) {
-  return String(value || "").toLowerCase().includes("mp4") ? "video/mp4" : "video/webm";
-}
+function cors(origin) { return { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", "Vary": "Origin" }; }
+function clean(value, fallback = "x") { const out = String(value || fallback).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120); return out || fallback; }
+function normalizeMime(value) { return String(value || "").toLowerCase().includes("mp4") ? "video/mp4" : "video/webm"; }
 
 export default {
   async fetch(request) {
@@ -56,7 +30,7 @@ export default {
     }
     if (request.method !== "POST") return Response.json({ error: "Método não permitido" }, { status: 405 });
     if (!origin) return Response.json({ error: "Origem não autorizada." }, { status: 403 });
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return Response.json({ error: "Blob não conectado." }, { status: 500, headers: cors(origin) });
+    if (!r2Configured()) return Response.json({ error: "Cloudflare R2 não configurado." }, { status: 500, headers: cors(origin) });
 
     try {
       const url = new URL(request.url);
@@ -68,19 +42,12 @@ export default {
       if (!bytes.byteLength || bytes.byteLength > 2_000_000) {
         return Response.json({ error: "Bloco vazio ou maior que 2 MB." }, { status: 413, headers: cors(origin) });
       }
-
-      const part = new Blob([bytes], { type: "application/octet-stream" });
       const pathname = `recording-parts/${recording}/${String(seq).padStart(5, "0")}-${session}.part`;
-      const result = await put(pathname, part, {
-        access: "private",
-        addRandomSuffix: false,
-        contentType: "application/octet-stream"
-      });
-
-      return Response.json({ ok: true, pathname: result.pathname, seq, mime }, { status: 201, headers: cors(origin) });
+      await putObject(pathname, new Uint8Array(bytes), "application/octet-stream", { session, recording, seq: String(seq), mime });
+      return Response.json({ ok: true, pathname, seq, mime, storage: "cloudflare-r2" }, { status: 201, headers: cors(origin) });
     } catch (error) {
-      console.error("recording chunk error", error);
-      return Response.json({ error: "Falha ao salvar bloco da gravação." }, { status: 500, headers: cors(origin) });
+      console.error("recording chunk r2 error", error);
+      return Response.json({ error: "Falha ao salvar bloco da gravação no R2." }, { status: 500, headers: cors(origin) });
     }
   }
 };

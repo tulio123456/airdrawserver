@@ -1,3 +1,5 @@
+import { r2Configured } from "../lib/r2.js";
+
 function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
   const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app").split(",").map(x => x.trim().replace(/\/+$/, "")).filter(Boolean);
@@ -25,12 +27,12 @@ export default {
     return Response.json({
       ok: true,
       service: "AirDraw Server",
-      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      storage: "cloudflare-r2",
+      r2Configured: r2Configured(),
       adminConfigured: Boolean(process.env.ADMIN_PASSWORD),
       originsConfigured: Boolean(process.env.ALLOWED_ORIGINS),
       recordings: true,
       captures: true,
-      uploadTransport: "simple-cors",
       time: new Date().toISOString()
     }, { headers });
   }

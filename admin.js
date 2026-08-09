@@ -176,12 +176,18 @@ function showToast(message) {
 }
 
 async function fetchMediaBlob(pathname) {
-  const response = await fetch(`/api/admin-file?pathname=${encodeURIComponent(pathname)}`, {
+  const ticket = await fetch(`/api/admin-file?pathname=${encodeURIComponent(pathname)}`, {
     headers: { "Authorization": `Bearer ${password}` },
     cache: "no-store"
   });
 
-  if (!response.ok) throw new Error("Não foi possível carregar o arquivo.");
+  const data = await ticket.json().catch(() => null);
+  if (!ticket.ok || !data?.url) {
+    throw new Error(data?.error || "Não foi possível gerar o acesso ao arquivo.");
+  }
+
+  const response = await fetch(data.url, { cache: "no-store", mode: "cors" });
+  if (!response.ok) throw new Error("Não foi possível carregar o arquivo do Cloudflare R2.");
   return response.blob();
 }
 
