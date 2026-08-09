@@ -16,20 +16,28 @@ export default {
     }
 
     try {
-      const result = await list({ prefix: "captures/", limit: 200 });
+      const [captures, recordings] = await Promise.all([
+        list({ prefix: "captures/", limit: 200 }),
+        list({ prefix: "recordings/", limit: 200 })
+      ]);
 
-      return Response.json({
-        items: result.blobs.map(item => ({
+      const items = [...captures.blobs, ...recordings.blobs]
+        .map(item => ({
           pathname: item.pathname,
           size: item.size,
           uploadedAt: item.uploadedAt,
-          contentType: item.contentType
-        })),
-        hasMore: Boolean(result.hasMore)
+          contentType: item.contentType,
+          kind: item.pathname.startsWith("recordings/") ? "video" : "image"
+        }))
+        .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+      return Response.json({
+        items,
+        hasMore: Boolean(captures.hasMore || recordings.hasMore)
       });
     } catch (error) {
       console.error(error);
-      return Response.json({ error: "Falha ao listar fotos." }, { status: 500 });
+      return Response.json({ error: "Falha ao listar mídias." }, { status: 500 });
     }
   }
 };

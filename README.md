@@ -1,70 +1,33 @@
-# AirDraw Server FINAL
+# AirDraw Server
 
-Versão simplificada para Vercel.
+Servidor Vercel para o AirDraw com suporte a gravações curtas e capturas antigas.
 
-## O que foi removido
-
-- Sem cookies de sessão.
-- Sem SESSION_SECRET.
-- Sem rewrite para /admin.
-- Sem pasta lib.
-- Sem multipart/form-data.
-
-Isso reduz bastante os pontos de falha.
-
-## Variáveis
-
-No projeto Server da Vercel:
+## Variáveis na Vercel
 
 ```env
 ADMIN_PASSWORD=SUA_SENHA
 ALLOWED_ORIGINS=https://URL-DO-CLIENT.vercel.app
 ```
 
-O Blob precisa estar conectado ao MESMO projeto. A variável
-`BLOB_READ_WRITE_TOKEN` deve aparecer automaticamente no deployment.
+Conecte o Vercel Blob ao mesmo projeto para obter `BLOB_READ_WRITE_TOKEN`.
 
-## Teste 1
+## Endpoints
 
-Abra:
-
-```text
-https://SEU-SERVER.vercel.app/api/health
-```
-
-Você precisa ver:
-
-```json
-{
-  "ok": true,
-  "blobConfigured": true,
-  "adminConfigured": true,
-  "originsConfigured": true
-}
-```
-
-## Teste 2
-
-Abra diretamente:
-
-```text
-https://SEU-SERVER.vercel.app/admin.html
-```
-
-Não use `/admin` nesta versão.
+- `POST /api/recordings` recebe clipes `video/webm` ou `video/mp4`.
+- `POST /api/captures` continua disponível apenas para compatibilidade.
+- `/admin.html` lista gravações e capturas antigas.
 
 ## Client
 
 No `config.js` do Client:
 
 ```js
-PHOTO_SERVER_URL: "https://SEU-SERVER.vercel.app"
+SERVER_URL: "https://SEU-SERVER.vercel.app",
+RECORDING_INTERVAL_MS: 172800000,
+RECORDING_DURATION_MS: 20000,
+RECORDING_VIDEO_BITS_PER_SECOND: 400000
 ```
 
-No Server:
+`172800000` ms = 48 horas. O navegador precisa estar aberto para gravar; não existe gravação em segundo plano com a página fechada.
 
-```env
-ALLOWED_ORIGINS=https://URL-DO-CLIENT.vercel.app
-```
-
-Depois de mudar Environment Variables, faça Redeploy.
+Depois de alterar Environment Variables, faça Redeploy.

@@ -10,11 +10,13 @@ const refresh = document.querySelector("#refresh");
 const logout = document.querySelector("#logout");
 const dialog = document.querySelector("#dialog");
 const preview = document.querySelector("#preview");
+const videoPreview = document.querySelector("#videoPreview");
 const close = document.querySelector("#close");
 const search = document.querySelector("#search");
 const clearSearch = document.querySelector("#clearSearch");
 const sort = document.querySelector("#sort");
 const density = document.querySelector("#density");
+const mediaType = document.querySelector("#mediaType");
 const autoRefresh = document.querySelector("#autoRefresh");
 const filterInfo = document.querySelector("#filterInfo");
 const statCount = document.querySelector("#statCount");
@@ -113,12 +115,14 @@ const stageBackgrounds = ["bg-grid", "bg-dark", "bg-light", "bg-neutral"];
 const prefs = {
   sort: localStorage.getItem("airdrawAdminSort") || "newest",
   density: localStorage.getItem("airdrawAdminDensity") || "comfortable",
-  autoRefresh: localStorage.getItem("airdrawAdminAutoRefresh") === "1"
+  autoRefresh: localStorage.getItem("airdrawAdminAutoRefresh") === "1",
+  mediaType: localStorage.getItem("airdrawAdminMediaType") || "all"
 };
 
 sort.value = prefs.sort;
 density.value = prefs.density;
 autoRefresh.checked = prefs.autoRefresh;
+mediaType.value = prefs.mediaType;
 applyDensity();
 
 async function request(url, options = {}) {
@@ -171,18 +175,18 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
 }
 
-async function fetchImageBlob(pathname) {
+async function fetchMediaBlob(pathname) {
   const response = await fetch(`/api/admin-file?pathname=${encodeURIComponent(pathname)}`, {
     headers: { "Authorization": `Bearer ${password}` },
     cache: "no-store"
   });
 
-  if (!response.ok) throw new Error("Não foi possível carregar a foto.");
+  if (!response.ok) throw new Error("Não foi possível carregar o arquivo.");
   return response.blob();
 }
 
 async function loadImage(pathname, img, trackCardUrl = false) {
-  const blob = await fetchImageBlob(pathname);
+  const blob = await fetchMediaBlob(pathname);
   const url = URL.createObjectURL(blob);
   img.src = url;
   if (trackCardUrl) cardObjectUrls.add(url);
@@ -207,7 +211,7 @@ function downloadBlob(blob, name) {
 
 async function downloadItem(item) {
   showToast("Preparando download...");
-  const blob = await fetchImageBlob(item.pathname);
+  const blob = await fetchMediaBlob(item.pathname);
   downloadBlob(blob, fileName(item.pathname));
 }
 
@@ -234,18 +238,23 @@ function sortItems(list) {
 
 function applyFilters() {
   const q = search.value.trim().toLocaleLowerCase("pt-BR");
+  const byType = mediaType.value === "all" ? items : items.filter(item => {
+    const kind = item.kind || ((item.contentType || "").startsWith("video/") ? "video" : "image");
+    return kind === mediaType.value;
+  });
   const filtered = q
-    ? items.filter(item => {
+    ? byType.filter(item => {
         const haystack = [
           item.pathname,
           fileName(item.pathname),
           formatDate(item.uploadedAt),
           item.contentType,
+          item.kind,
           bytes(item.size)
         ].join(" ").toLocaleLowerCase("pt-BR");
         return haystack.includes(q);
       })
-    : items;
+    : byType;
 
   filteredItems = sortItems(filtered);
   clearSearch.classList.toggle("hidden", !q);
@@ -259,45 +268,54 @@ function escapeHtml(value) {
 }
 
 function updateStats() {
+  const videoCount = items.filter(item => (item.kind === "video") || (item.contentType || "").startsWith("video/")).length;
+  const imageCount = items.length - videoCount;
   statCount.textContent = String(items.length);
   statSize.textContent = bytes(items.reduce((sum, item) => sum + Number(item.size || 0), 0));
   const newest = [...items].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
   statLatest.textContent = newest ? shortDate(newest.uploadedAt) : "—";
-  statLatestTime.textContent = newest ? formatDate(newest.uploadedAt) : "sem capturas";
-  count.textContent = `${items.length} captura(s)`;
+  statLatestTime.textContent = newest ? formatDate(newest.uploadedAt) : "sem arquivos";
+  count.textContent = `${videoCount} gravação(ões) • ${imageCount} captura(s) antiga(s)`;
 }
 
 function renderGallery() {
   releaseCardUrls();
   gallery.innerHTML = "";
   empty.classList.toggle("hidden", filteredItems.length > 0);
-  empty.textContent = items.length ? "Nenhuma captura encontrada com esse filtro." : "Nenhuma foto recebida ainda.";
+  empty.textContent = items.length ? "Nenhum arquivo encontrado com esse filtro." : "Nenhuma mídia recebida ainda.";
 
   filteredItems.forEach((item, index) => {
+    const isVideo = item.kind === "video" || (item.contentType || "").startsWith("video/") || item.pathname.startsWith("recordings/");
     const card = document.createElement("article");
-    card.className = "photo";
+    card.className = `photo ${isVideo ? "videoCard" : ""}`;
 
     const imageWrap = document.createElement("div");
     imageWrap.className = "imageWrap";
 
-    const img = document.createElement("img");
-    img.className = "thumb";
-    img.alt = "Captura";
-    img.loading = "lazy";
-    loadImage(item.pathname, img, true).catch(() => {
-      img.alt = "Falha ao carregar captura";
-    });
-
-    img.addEventListener("click", () => openViewer(index));
+    if (isVideo) {
+      const videoThumb = document.createElement("button");
+      videoThumb.type = "button";
+      videoThumb.className = "videoThumb";
+      videoThumb.innerHTML = `<span class="videoPlay">▶</span><b>GRAVAÇÃO</b><small>${escapeHtml((item.contentType || "video").replace("video/", "").toUpperCase())}</small>`;
+      videoThumb.addEventListener("click", () => openViewer(index));
+      imageWrap.append(videoThumb);
+    } else {
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.alt = "Captura";
+      img.loading = "lazy";
+      loadImage(item.pathname, img, true).catch(() => { img.alt = "Falha ao carregar captura"; });
+      img.addEventListener("click", () => openViewer(index));
+      imageWrap.append(img);
+    }
 
     const overlay = document.createElement("div");
     overlay.className = "imageOverlay";
-    overlay.innerHTML = `<span>⌕ Abrir</span><span>${bytes(item.size)}</span>`;
-    imageWrap.append(img, overlay);
+    overlay.innerHTML = `<span>${isVideo ? "▶ Reproduzir" : "⌕ Abrir"}</span><span>${bytes(item.size)}</span>`;
+    imageWrap.append(overlay);
 
     const meta = document.createElement("div");
     meta.className = "meta";
-
     const name = document.createElement("strong");
     name.className = "fileName";
     name.title = fileName(item.pathname);
@@ -313,7 +331,6 @@ function renderGallery() {
 
     const actions = document.createElement("div");
     actions.className = "cardActions";
-
     const downloadButton = document.createElement("button");
     downloadButton.className = "downloadCard";
     downloadButton.textContent = "⇩ Baixar";
@@ -326,11 +343,8 @@ function renderGallery() {
     remove.className = "removeCard";
     remove.textContent = "Excluir";
     remove.addEventListener("click", async () => {
-      if (!confirm("Excluir esta foto?")) return;
-      await request("/api/admin-delete", {
-        method: "DELETE",
-        body: JSON.stringify({ pathname: item.pathname })
-      });
+      if (!confirm(`Excluir ${isVideo ? "esta gravação" : "esta foto"}?`)) return;
+      await request("/api/admin-delete", { method: "DELETE", body: JSON.stringify({ pathname: item.pathname }) });
       await load(false);
     });
 
@@ -348,7 +362,7 @@ async function load(showFeedback = true) {
     items = data.items || [];
     updateStats();
     applyFilters();
-    if (showFeedback) showToast("Capturas atualizadas");
+    if (showFeedback) showToast("Mídia atualizada");
   } finally {
     refresh.disabled = false;
   }
@@ -483,21 +497,24 @@ async function openViewer(index) {
   if (!filteredItems[index]) return;
   currentIndex = index;
   const item = filteredItems[index];
+  const isVideo = item.kind === "video" || (item.contentType || "").startsWith("video/") || item.pathname.startsWith("recordings/");
   const token = ++loadToken;
 
   resetView();
   imageLoading.classList.remove("hidden");
   preview.removeAttribute("src");
-  if (currentPreviewUrl) {
-    URL.revokeObjectURL(currentPreviewUrl);
-    currentPreviewUrl = "";
-  }
+  preview.classList.toggle("hidden", isVideo);
+  videoPreview.classList.toggle("hidden", !isVideo);
+  videoPreview.pause();
+  videoPreview.removeAttribute("src");
+  dialog.classList.toggle("videoMode", isVideo);
+  if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = ""; }
 
   viewerName.textContent = fileName(item.pathname);
   detailName.textContent = fileName(item.pathname);
   detailDate.textContent = formatDate(item.uploadedAt);
   detailSize.textContent = bytes(item.size);
-  detailType.textContent = item.contentType || "image/jpeg";
+  detailType.textContent = item.contentType || (isVideo ? "video/webm" : "image/jpeg");
   detailIndex.textContent = `${index + 1} / ${filteredItems.length}`;
   detailPath.textContent = item.pathname;
   detailDimensions.textContent = "—";
@@ -508,16 +525,32 @@ async function openViewer(index) {
   if (!dialog.open) dialog.showModal();
 
   try {
-    const { url } = await loadImage(item.pathname, preview, false);
-    if (token !== loadToken) {
-      URL.revokeObjectURL(url);
-      return;
+    if (isVideo) {
+      const blob = await fetchMediaBlob(item.pathname);
+      if (token !== loadToken) return;
+      const url = URL.createObjectURL(blob);
+      currentPreviewUrl = url;
+      videoPreview.src = url;
+      await new Promise(resolve => {
+        if (videoPreview.readyState >= 1) return resolve();
+        videoPreview.addEventListener("loadedmetadata", resolve, { once: true });
+        setTimeout(resolve, 1800);
+      });
+      if (videoPreview.videoWidth && videoPreview.videoHeight) {
+        detailDimensions.textContent = `${videoPreview.videoWidth} × ${videoPreview.videoHeight}`;
+        const d = gcd(videoPreview.videoWidth, videoPreview.videoHeight);
+        detailRatio.textContent = `${Math.round(videoPreview.videoWidth / d)}:${Math.round(videoPreview.videoHeight / d)}`;
+      }
+      videoPreview.play().catch(() => {});
+    } else {
+      const { url } = await loadImage(item.pathname, preview, false);
+      if (token !== loadToken) { URL.revokeObjectURL(url); return; }
+      currentPreviewUrl = url;
+      await preview.decode().catch(() => {});
+      setImageDetails();
+      miniMapImage.src = url;
+      fitPreview();
     }
-    currentPreviewUrl = url;
-    await preview.decode().catch(() => {});
-    setImageDetails();
-    miniMapImage.src = url;
-    fitPreview();
   } catch (error) {
     if (token === loadToken) showToast(error.message);
   } finally {
@@ -665,6 +698,10 @@ sort.addEventListener("change", () => {
   localStorage.setItem("airdrawAdminSort", sort.value);
   applyFilters();
 });
+mediaType.addEventListener("change", () => {
+  localStorage.setItem("airdrawAdminMediaType", mediaType.value);
+  applyFilters();
+});
 density.addEventListener("change", () => {
   localStorage.setItem("airdrawAdminDensity", density.value);
   applyDensity();
@@ -681,6 +718,10 @@ dialog.addEventListener("close", () => {
   if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
   currentPreviewUrl = "";
   preview.removeAttribute("src");
+  videoPreview.pause();
+  videoPreview.removeAttribute("src");
+  videoPreview.load();
+  dialog.classList.remove("videoMode");
   view.focus = false;
   dialog.classList.remove("focusMode");
   resetImageAdjustments();
@@ -742,17 +783,20 @@ fullscreen.addEventListener("click", async () => {
 });
 
 imageStage.addEventListener("wheel", event => {
+  if (dialog.classList.contains("videoMode")) return;
   event.preventDefault();
   const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
   setZoom(view.zoom * factor, event.clientX, event.clientY);
 }, { passive: false });
 
 imageStage.addEventListener("dblclick", event => {
+  if (dialog.classList.contains("videoMode")) return;
   if (view.zoom < 1.5) setZoom(Math.max(2, view.zoom * 2), event.clientX, event.clientY);
   else fitPreview();
 });
 
 imageStage.addEventListener("pointerdown", event => {
+  if (dialog.classList.contains("videoMode")) return;
   activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   imageStage.setPointerCapture?.(event.pointerId);
 
@@ -777,6 +821,7 @@ imageStage.addEventListener("pointerdown", event => {
 });
 
 imageStage.addEventListener("pointermove", event => {
+  if (dialog.classList.contains("videoMode")) return;
   if (!activePointers.has(event.pointerId)) return;
   activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -820,24 +865,25 @@ imageStage.addEventListener("pointerup", stopPanning);
 imageStage.addEventListener("pointercancel", stopPanning);
 
 window.addEventListener("resize", () => {
-  if (dialog.open && preview.src) fitPreview();
+  if (dialog.open && preview.src && !dialog.classList.contains("videoMode")) fitPreview();
 });
 
 document.addEventListener("keydown", event => {
   if (!dialog.open) return;
   const key = event.key.toLowerCase();
+  const videoMode = dialog.classList.contains("videoMode");
   if (event.key === "ArrowLeft") { event.preventDefault(); navigate(-1); }
   else if (event.key === "ArrowRight") { event.preventDefault(); navigate(1); }
-  else if (event.key === "+" || event.key === "=") { event.preventDefault(); setZoom(view.zoom * 1.2); }
-  else if (event.key === "-") { event.preventDefault(); setZoom(view.zoom / 1.2); }
-  else if (event.key === "0") { event.preventDefault(); fitPreview(); }
-  else if (key === "r") { event.preventDefault(); view.rotation += 90; fitPreview(); }
+  else if (!videoMode && (event.key === "+" || event.key === "=")) { event.preventDefault(); setZoom(view.zoom * 1.2); }
+  else if (!videoMode && event.key === "-") { event.preventDefault(); setZoom(view.zoom / 1.2); }
+  else if (!videoMode && event.key === "0") { event.preventDefault(); fitPreview(); }
+  else if (!videoMode && key === "r") { event.preventDefault(); view.rotation += 90; fitPreview(); }
   else if (key === "f") { event.preventDefault(); toggleFocusMode(); }
-  else if (event.code === "Space") { event.preventDefault(); setComparing(true); }
+  else if (!videoMode && event.code === "Space") { event.preventDefault(); setComparing(true); }
   else if (key === "d") { event.preventDefault(); download.click(); }
 });
 
 
 document.addEventListener("keyup", event => {
-  if (dialog.open && event.code === "Space") setComparing(false);
+  if (dialog.open && !dialog.classList.contains("videoMode") && event.code === "Space") setComparing(false);
 });

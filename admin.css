@@ -130,3 +130,11 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;back
   .miniMap{display:none!important}.compareBadge{top:10px}.adjustPanel{margin-top:10px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+
+/* Gravações: integração no mesmo dashboard sem pesar a galeria. */
+.videoThumb{width:100%;height:100%;min-height:180px;border:0;display:grid;place-items:center;align-content:center;gap:8px;background:radial-gradient(circle at 50% 42%,rgba(122,94,255,.20),transparent 34%),linear-gradient(145deg,#0a0d15,#111827);color:#fff;cursor:pointer}
+.videoPlay{display:grid;place-items:center;width:58px;height:58px;padding-left:4px;border-radius:50%;background:linear-gradient(145deg,#7c63ff,#b66cff);box-shadow:0 16px 44px rgba(112,81,255,.32),inset 0 1px 0 rgba(255,255,255,.32);font-size:20px}.videoThumb b{font-size:10px;letter-spacing:.18em}.videoThumb small{font-size:8px;color:#7e8a9d;letter-spacing:.12em}.videoCard .imageOverlay{pointer-events:none}
+.videoPreview{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);max-width:calc(100% - 42px);max-height:calc(100% - 42px);width:auto;height:auto;border-radius:16px;background:#000;box-shadow:0 24px 80px rgba(0,0,0,.48);outline:1px solid rgba(255,255,255,.08)}
+.viewerDialog.videoMode .viewerToolbar,.viewerDialog.videoMode .adjustPanel,.viewerDialog.videoMode #exportEdited,.viewerDialog.videoMode #compareBadge,.viewerDialog.videoMode .miniMap,.viewerDialog.videoMode #zoomHint{display:none!important}.viewerDialog.videoMode .imageTransform{display:none}.viewerDialog.videoMode .imageStage{cursor:default!important}.viewerDialog.videoMode .imageStage:before{content:"GRAVAÇÃO";position:absolute;left:16px;top:14px;z-index:2;padding:6px 9px;border-radius:999px;background:rgba(10,12,18,.72);border:1px solid rgba(255,255,255,.08);font-size:7px;font-weight:900;letter-spacing:.16em;color:#b5bdca}
+@media(max-width:720px){.videoThumb{min-height:150px}.videoPreview{max-width:calc(100% - 16px);max-height:calc(100% - 18px);border-radius:12px}}

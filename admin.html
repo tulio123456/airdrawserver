@@ -32,21 +32,21 @@
         <div>
           <span class="eyebrow">AIRDRAW</span>
           <div class="titleRow">
-            <h1>Capturas</h1>
+            <h1>Mídia</h1>
             <span id="liveBadge" class="liveBadge"><i></i> Admin online</span>
           </div>
           <p id="count"></p>
         </div>
         <div class="actions">
-          <button id="refresh" class="iconButton" title="Atualizar capturas">↻ <span>Atualizar</span></button>
+          <button id="refresh" class="iconButton" title="Atualizar mídia">↻ <span>Atualizar</span></button>
           <button id="logout" class="iconButton dangerGhost">Sair</button>
         </div>
       </header>
 
       <section class="stats" aria-label="Resumo">
-        <article class="statCard"><span>CAPTURAS</span><strong id="statCount">0</strong><small>arquivos disponíveis</small></article>
+        <article class="statCard"><span>ARQUIVOS</span><strong id="statCount">0</strong><small>fotos + gravações</small></article>
         <article class="statCard"><span>ESPAÇO</span><strong id="statSize">0 B</strong><small>total armazenado</small></article>
-        <article class="statCard"><span>MAIS RECENTE</span><strong id="statLatest">—</strong><small id="statLatestTime">sem capturas</small></article>
+        <article class="statCard"><span>MAIS RECENTE</span><strong id="statLatest">—</strong><small id="statLatestTime">sem arquivos</small></article>
       </section>
 
       <section class="controlPanel">
@@ -69,6 +69,15 @@
           </label>
 
           <label class="selectControl">
+            <span>Tipo</span>
+            <select id="mediaType">
+              <option value="all">Tudo</option>
+              <option value="video">Gravações</option>
+              <option value="image">Capturas antigas</option>
+            </select>
+          </label>
+
+          <label class="selectControl">
             <span>Exibição</span>
             <select id="density">
               <option value="comfortable">Confortável</option>
@@ -86,7 +95,7 @@
       </section>
 
       <div id="filterInfo" class="filterInfo hidden"></div>
-      <div id="empty" class="empty hidden">Nenhuma foto recebida ainda.</div>
+      <div id="empty" class="empty hidden">Nenhuma mídia recebida ainda.</div>
       <div id="gallery" class="gallery"></div>
     </section>
   </main>
@@ -96,7 +105,7 @@
       <header class="viewerTopbar">
         <div class="viewerTitle">
           <span class="eyebrow">VISUALIZADOR</span>
-          <strong id="viewerName">Captura</strong>
+          <strong id="viewerName">Arquivo</strong>
         </div>
         <div class="viewerActions">
           <button id="exportEdited" class="accentAction" title="Exportar visual atual">✦ <span>Exportar</span></button>
@@ -160,12 +169,13 @@
             <div id="imageTransform" class="imageTransform">
               <img id="preview" alt="Foto" draggable="false">
             </div>
+            <video id="videoPreview" class="videoPreview hidden" controls playsinline preload="metadata"></video>
             <div id="compareBadge" class="compareBadge hidden">ORIGINAL</div>
             <div id="miniMap" class="miniMap hidden" aria-hidden="true">
               <img id="miniMapImage" alt="">
               <span id="miniMapViewport"></span>
             </div>
-            <div id="imageLoading" class="imageLoading hidden"><span></span>Carregando imagem...</div>
+            <div id="imageLoading" class="imageLoading hidden"><span></span>Carregando arquivo...</div>
             <button id="prevImage" class="navButton prev" title="Anterior">‹</button>
             <button id="nextImage" class="navButton next" title="Próxima">›</button>
             <div id="zoomHint" class="zoomHint">Use a roda do mouse para zoom • arraste para mover</div>

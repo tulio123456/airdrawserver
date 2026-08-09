@@ -20,7 +20,7 @@ export default {
 
       if (
         typeof pathname !== "string" ||
-        !pathname.startsWith("captures/") ||
+        (!pathname.startsWith("captures/") && !pathname.startsWith("recordings/")) ||
         pathname.includes("..")
       ) {
         return Response.json({ error: "Caminho inválido." }, { status: 400 });
@@ -30,7 +30,7 @@ export default {
       const blob = result.blobs.find(x => x.pathname === pathname);
 
       if (!blob) {
-        return Response.json({ error: "Foto não encontrada." }, { status: 404 });
+        return Response.json({ error: "Arquivo não encontrado." }, { status: 404 });
       }
 
       await del(blob.url);

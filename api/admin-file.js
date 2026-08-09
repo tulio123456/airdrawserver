@@ -13,7 +13,7 @@ export default {
 
     const pathname = new URL(request.url).searchParams.get("pathname") || "";
 
-    if (!pathname.startsWith("captures/") || pathname.includes("..")) {
+    if ((!pathname.startsWith("captures/") && !pathname.startsWith("recordings/")) || pathname.includes("..")) {
       return new Response("Caminho inválido", { status: 400 });
     }
 
@@ -31,7 +31,7 @@ export default {
       return new Response(result.stream, {
         status: 200,
         headers: {
-          "Content-Type": result.blob.contentType || "image/jpeg",
+          "Content-Type": result.blob.contentType || "application/octet-stream",
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff"
         }
