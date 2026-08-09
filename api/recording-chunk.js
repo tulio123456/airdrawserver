@@ -4,7 +4,7 @@ function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
   if (!origin) return null;
 
-  const allowed = String(process.env.ALLOWED_ORIGINS || "")
+  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app")
     .split(",")
     .map(x => x.trim().replace(/\/+$/, ""))
     .filter(Boolean);

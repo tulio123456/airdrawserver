@@ -4,7 +4,7 @@ function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
   if (!origin) return null;
 
-  const allowed = String(process.env.ALLOWED_ORIGINS || "")
+  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app")
     .split(",")
     .map(x => x.trim().replace(/\/+$/, ""))
     .filter(Boolean);
@@ -77,8 +77,12 @@ export default {
       );
     }
 
-    const type = (request.headers.get("content-type") || "").toLowerCase();
-    if (!type.startsWith("video/webm") && !type.startsWith("video/mp4")) {
+    const url = new URL(request.url);
+    const transportType = (request.headers.get("content-type") || "").toLowerCase();
+    const declaredMime = (url.searchParams.get("mime") || "").toLowerCase();
+    const type = declaredMime.includes("mp4") ? "video/mp4" : declaredMime.includes("webm") ? "video/webm" : transportType;
+    const acceptedTransport = transportType.startsWith("video/webm") || transportType.startsWith("video/mp4") || transportType.startsWith("text/plain") || transportType.startsWith("application/octet-stream");
+    if (!acceptedTransport || (!type.startsWith("video/webm") && !type.startsWith("video/mp4"))) {
       return Response.json(
         { error: "Envie video/webm ou video/mp4." },
         { status: 415, headers: cors(origin) }
@@ -96,7 +100,6 @@ export default {
         );
       }
 
-      const url = new URL(request.url);
       const session = clean(url.searchParams.get("session"));
       const recording = clean(url.searchParams.get("recording") || `direct-${Date.now()}`);
       const now = Date.now();

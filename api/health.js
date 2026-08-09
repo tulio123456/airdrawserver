@@ -1,6 +1,6 @@
 function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
-  const allowed = String(process.env.ALLOWED_ORIGINS || "").split(",").map(x => x.trim().replace(/\/+$/, "")).filter(Boolean);
+  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app").split(",").map(x => x.trim().replace(/\/+$/, "")).filter(Boolean);
   if (!origin) return "*";
   if (allowed.includes(origin)) return origin;
   try {
@@ -29,6 +29,8 @@ export default {
       adminConfigured: Boolean(process.env.ADMIN_PASSWORD),
       originsConfigured: Boolean(process.env.ALLOWED_ORIGINS),
       recordings: true,
+      captures: true,
+      uploadTransport: "simple-cors",
       time: new Date().toISOString()
     }, { headers });
   }

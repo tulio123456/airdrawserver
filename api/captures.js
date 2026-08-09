@@ -4,7 +4,7 @@ function allowedOrigin(request) {
   const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
   if (!origin) return null;
 
-  const allowed = String(process.env.ALLOWED_ORIGINS || "")
+  const allowed = String(process.env.ALLOWED_ORIGINS || "https://airdrawclient.vercel.app")
     .split(",")
     .map(x => x.trim().replace(/\/+$/, ""))
     .filter(Boolean);
@@ -73,10 +73,13 @@ export default {
       );
     }
 
-    const type = request.headers.get("content-type") || "";
-    if (!type.toLowerCase().startsWith("image/jpeg")) {
+    const url = new URL(request.url);
+    const type = (request.headers.get("content-type") || "").toLowerCase();
+    const declaredMime = (url.searchParams.get("mime") || "").toLowerCase();
+    const acceptedTransport = type.startsWith("image/jpeg") || type.startsWith("text/plain") || type.startsWith("application/octet-stream");
+    if (!acceptedTransport || (declaredMime && declaredMime !== "image/jpeg")) {
       return Response.json(
-        { error: "Envie image/jpeg." },
+        { error: "Envie uma captura JPEG." },
         { status: 415, headers: cors(origin) }
       );
     }
@@ -91,7 +94,6 @@ export default {
         );
       }
 
-      const url = new URL(request.url);
       const session = clean(url.searchParams.get("session"));
       const now = Date.now();
       const inverse = String(9_999_999_999_999 - now).padStart(13, "0");

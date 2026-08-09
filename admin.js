@@ -275,7 +275,7 @@ function updateStats() {
   const newest = [...items].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
   statLatest.textContent = newest ? shortDate(newest.uploadedAt) : "—";
   statLatestTime.textContent = newest ? formatDate(newest.uploadedAt) : "sem arquivos";
-  count.textContent = `${videoCount} gravação(ões) • ${imageCount} captura(s) antiga(s)`;
+  count.textContent = `${videoCount} gravação(ões) • ${imageCount} captura(s)`;
 }
 
 function renderGallery() {
