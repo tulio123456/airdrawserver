@@ -99,8 +99,7 @@
           <strong id="viewerName">Captura</strong>
         </div>
         <div class="viewerActions">
-          <button id="exportEdited" class="accentAction" title="Exportar visual atual">✦ <span>Exportar</span></button>
-          <button id="download" title="Baixar original">⇩ <span>Original</span></button>
+          <button id="download" title="Baixar imagem">⇩ <span>Baixar</span></button>
           <button id="fullscreen" title="Tela cheia">⛶</button>
           <button id="close" class="close" title="Fechar">×</button>
         </div>
@@ -118,26 +117,7 @@
             <div><span>Tamanho</span><strong id="detailSize">—</strong></div>
             <div><span>Tipo</span><strong id="detailType">—</strong></div>
             <div><span>Posição</span><strong id="detailIndex">—</strong></div>
-            <div><span>Resolução</span><strong id="detailDimensions">—</strong></div>
-            <div><span>Proporção</span><strong id="detailRatio">—</strong></div>
           </div>
-
-          <section class="adjustPanel">
-            <div class="panelHeading">
-              <span>AJUSTES VISUAIS</span>
-              <button id="resetAdjustments" type="button">Resetar</button>
-            </div>
-            <label class="adjustRow"><span>Brilho <b id="brightnessValue">100%</b></span><input id="brightness" type="range" min="50" max="160" value="100"></label>
-            <label class="adjustRow"><span>Contraste <b id="contrastValue">100%</b></span><input id="contrast" type="range" min="50" max="180" value="100"></label>
-            <label class="adjustRow"><span>Saturação <b id="saturationValue">100%</b></span><input id="saturation" type="range" min="0" max="220" value="100"></label>
-            <label class="adjustRow"><span>Matiz <b id="hueValue">0°</b></span><input id="hue" type="range" min="-180" max="180" value="0"></label>
-            <div class="quickLooks">
-              <button type="button" data-look="clean">Clean</button>
-              <button type="button" data-look="vivid">Vivid</button>
-              <button type="button" data-look="mono">Mono</button>
-              <button type="button" data-look="warm">Warm</button>
-            </div>
-          </section>
           <div class="pathBox">
             <span>Caminho</span>
             <code id="detailPath">—</code>
@@ -149,8 +129,6 @@
             <small><kbd>0</kbd> Ajustar</small>
             <small><kbd>←</kbd><kbd>→</kbd> Navegar</small>
             <small><kbd>R</kbd> Girar</small>
-            <small><kbd>F</kbd> Expandir</small>
-            <small><kbd>Espaço</kbd> Original</small>
             <small><kbd>D</kbd> Baixar</small>
           </div>
         </aside>
@@ -159,11 +137,6 @@
           <div id="imageStage" class="imageStage">
             <div id="imageTransform" class="imageTransform">
               <img id="preview" alt="Foto" draggable="false">
-            </div>
-            <div id="compareBadge" class="compareBadge hidden">ORIGINAL</div>
-            <div id="miniMap" class="miniMap hidden" aria-hidden="true">
-              <img id="miniMapImage" alt="">
-              <span id="miniMapViewport"></span>
             </div>
             <div id="imageLoading" class="imageLoading hidden"><span></span>Carregando imagem...</div>
             <button id="prevImage" class="navButton prev" title="Anterior">‹</button>
@@ -177,18 +150,12 @@
             <button id="zoomIn" title="Aumentar zoom">+</button>
             <span class="toolDivider"></span>
             <button id="fitImage" title="Ajustar à tela">⊡ <span>Ajustar</span></button>
-            <button id="fitWidth" title="Ajustar à largura">↔ <span>Largura</span></button>
-            <button id="fitHeight" title="Ajustar à altura">↕ <span>Altura</span></button>
             <button id="actualSize" title="Tamanho 100%">1:1</button>
             <span class="toolDivider"></span>
             <button id="rotateLeft" title="Girar à esquerda">↶</button>
             <button id="rotateRight" title="Girar à direita">↷</button>
             <button id="flipImage" title="Espelhar horizontalmente">⇆</button>
-            <button id="flipVertical" title="Espelhar verticalmente">⇅</button>
             <span class="toolDivider"></span>
-            <button id="compareOriginal" title="Segure para ver o original">◐ <span>Original</span></button>
-            <button id="cycleStageBg" title="Trocar fundo do visualizador">◩</button>
-            <button id="focusMode" title="Expandir área da imagem">↗ <span>Expandir</span></button>
             <button id="toggleInfo" title="Mostrar/ocultar informações">ⓘ</button>
           </div>
         </section>

@@ -49,29 +49,6 @@ const rotateRight = document.querySelector("#rotateRight");
 const flipImage = document.querySelector("#flipImage");
 const toggleInfo = document.querySelector("#toggleInfo");
 const viewerBody = document.querySelector(".viewerBody");
-const exportEdited = document.querySelector("#exportEdited");
-const detailDimensions = document.querySelector("#detailDimensions");
-const detailRatio = document.querySelector("#detailRatio");
-const brightness = document.querySelector("#brightness");
-const contrast = document.querySelector("#contrast");
-const saturation = document.querySelector("#saturation");
-const hue = document.querySelector("#hue");
-const brightnessValue = document.querySelector("#brightnessValue");
-const contrastValue = document.querySelector("#contrastValue");
-const saturationValue = document.querySelector("#saturationValue");
-const hueValue = document.querySelector("#hueValue");
-const resetAdjustments = document.querySelector("#resetAdjustments");
-const fitWidth = document.querySelector("#fitWidth");
-const fitHeight = document.querySelector("#fitHeight");
-const flipVertical = document.querySelector("#flipVertical");
-const compareOriginal = document.querySelector("#compareOriginal");
-const compareBadge = document.querySelector("#compareBadge");
-const focusMode = document.querySelector("#focusMode");
-const cycleStageBg = document.querySelector("#cycleStageBg");
-const miniMap = document.querySelector("#miniMap");
-const miniMapImage = document.querySelector("#miniMapImage");
-const miniMapViewport = document.querySelector("#miniMapViewport");
-const quickLookButtons = [...document.querySelectorAll("[data-look]")];
 
 let password = "";
 let items = [];
@@ -87,14 +64,6 @@ const view = {
   zoom: 1,
   rotation: 0,
   flipX: 1,
-  flipY: 1,
-  brightness: 100,
-  contrast: 100,
-  saturation: 100,
-  hue: 0,
-  comparing: false,
-  focus: false,
-  stageBg: 0,
   x: 0,
   y: 0,
   panning: false,
@@ -103,12 +72,6 @@ const view = {
   startX: 0,
   startY: 0
 };
-
-const activePointers = new Map();
-let pinchStartDistance = 0;
-let pinchStartZoom = 1;
-let pinchCenter = null;
-const stageBackgrounds = ["bg-grid", "bg-dark", "bg-light", "bg-neutral"];
 
 const prefs = {
   sort: localStorage.getItem("airdrawAdminSort") || "newest",
@@ -358,59 +321,19 @@ function resetView() {
   view.zoom = 1;
   view.rotation = 0;
   view.flipX = 1;
-  view.flipY = 1;
   view.x = 0;
   view.y = 0;
   applyTransform();
 }
 
 function clampZoom(value) {
-  return Math.min(16, Math.max(.05, value));
-}
-
-function currentFilter() {
-  if (view.comparing) return "none";
-  return `brightness(${view.brightness}%) contrast(${view.contrast}%) saturate(${view.saturation}%) hue-rotate(${view.hue}deg)`;
-}
-
-function applyAdjustments() {
-  preview.style.filter = currentFilter();
-  brightness.value = String(view.brightness);
-  contrast.value = String(view.contrast);
-  saturation.value = String(view.saturation);
-  hue.value = String(view.hue);
-  brightnessValue.textContent = `${view.brightness}%`;
-  contrastValue.textContent = `${view.contrast}%`;
-  saturationValue.textContent = `${view.saturation}%`;
-  hueValue.textContent = `${view.hue}°`;
-  compareBadge.classList.toggle("hidden", !view.comparing);
-}
-
-function updateMiniMap() {
-  const rotated = Math.abs(view.rotation % 180) === 90;
-  const shouldShow = preview.naturalWidth && view.zoom > 1.35 && !rotated;
-  miniMap.classList.toggle("hidden", !shouldShow);
-  if (!shouldShow) return;
-  if (miniMapImage.src !== preview.src) miniMapImage.src = preview.src;
-  const stageRect = imageStage.getBoundingClientRect();
-  const displayW = preview.naturalWidth * view.zoom;
-  const displayH = preview.naturalHeight * view.zoom;
-  const visibleW = Math.min(1, stageRect.width / displayW);
-  const visibleH = Math.min(1, stageRect.height / displayH);
-  const centerX = .5 - view.x / displayW;
-  const centerY = .5 - view.y / displayH;
-  miniMapViewport.style.width = `${visibleW * 100}%`;
-  miniMapViewport.style.height = `${visibleH * 100}%`;
-  miniMapViewport.style.left = `${Math.max(0, Math.min(1 - visibleW, centerX - visibleW / 2)) * 100}%`;
-  miniMapViewport.style.top = `${Math.max(0, Math.min(1 - visibleH, centerY - visibleH / 2)) * 100}%`;
+  return Math.min(8, Math.max(.1, value));
 }
 
 function applyTransform() {
-  imageTransform.style.transform = `translate(calc(-50% + ${view.x}px), calc(-50% + ${view.y}px)) rotate(${view.rotation}deg) scale(${view.zoom * view.flipX}, ${view.zoom * view.flipY})`;
+  imageTransform.style.transform = `translate(calc(-50% + ${view.x}px), calc(-50% + ${view.y}px)) rotate(${view.rotation}deg) scale(${view.zoom * view.flipX}, ${view.zoom})`;
   zoomValue.textContent = `${Math.round(view.zoom * 100)}%`;
   imageStage.style.cursor = view.zoom > 1 ? (view.panning ? "grabbing" : "grab") : "default";
-  applyAdjustments();
-  updateMiniMap();
 }
 
 function setZoom(nextZoom, anchorX = null, anchorY = null) {
@@ -442,43 +365,6 @@ function fitPreview() {
   applyTransform();
 }
 
-function fitPreviewWidth() {
-  if (!preview.naturalWidth || !preview.naturalHeight) return;
-  const rect = imageStage.getBoundingClientRect();
-  const rotated = Math.abs(view.rotation % 180) === 90;
-  const imageWidth = rotated ? preview.naturalHeight : preview.naturalWidth;
-  view.zoom = clampZoom((rect.width - 36) / imageWidth);
-  view.x = 0;
-  view.y = 0;
-  applyTransform();
-}
-
-function fitPreviewHeight() {
-  if (!preview.naturalWidth || !preview.naturalHeight) return;
-  const rect = imageStage.getBoundingClientRect();
-  const rotated = Math.abs(view.rotation % 180) === 90;
-  const imageHeight = rotated ? preview.naturalWidth : preview.naturalHeight;
-  view.zoom = clampZoom((rect.height - 36) / imageHeight);
-  view.x = 0;
-  view.y = 0;
-  applyTransform();
-}
-
-function gcd(a, b) {
-  a = Math.round(a); b = Math.round(b);
-  while (b) [a, b] = [b, a % b];
-  return a || 1;
-}
-
-function setImageDetails() {
-  if (!preview.naturalWidth || !preview.naturalHeight) return;
-  detailDimensions.textContent = `${preview.naturalWidth} × ${preview.naturalHeight}`;
-  const d = gcd(preview.naturalWidth, preview.naturalHeight);
-  const rw = Math.round(preview.naturalWidth / d);
-  const rh = Math.round(preview.naturalHeight / d);
-  detailRatio.textContent = rw < 100 && rh < 100 ? `${rw}:${rh}` : (preview.naturalWidth / preview.naturalHeight).toFixed(2);
-}
-
 async function openViewer(index) {
   if (!filteredItems[index]) return;
   currentIndex = index;
@@ -500,8 +386,6 @@ async function openViewer(index) {
   detailType.textContent = item.contentType || "image/jpeg";
   detailIndex.textContent = `${index + 1} / ${filteredItems.length}`;
   detailPath.textContent = item.pathname;
-  detailDimensions.textContent = "—";
-  detailRatio.textContent = "—";
   prevImage.disabled = index <= 0;
   nextImage.disabled = index >= filteredItems.length - 1;
 
@@ -515,8 +399,6 @@ async function openViewer(index) {
     }
     currentPreviewUrl = url;
     await preview.decode().catch(() => {});
-    setImageDetails();
-    miniMapImage.src = url;
     fitPreview();
   } catch (error) {
     if (token === loadToken) showToast(error.message);
@@ -542,81 +424,6 @@ async function copyText(text, successMessage) {
 function applyDensity() {
   gallery.classList.toggle("compact", density.value === "compact");
   gallery.classList.toggle("large", density.value === "large");
-}
-
-function resetImageAdjustments() {
-  view.brightness = 100;
-  view.contrast = 100;
-  view.saturation = 100;
-  view.hue = 0;
-  applyAdjustments();
-}
-
-function applyLook(name) {
-  const looks = {
-    clean: { brightness: 104, contrast: 104, saturation: 100, hue: 0 },
-    vivid: { brightness: 104, contrast: 112, saturation: 138, hue: 0 },
-    mono: { brightness: 102, contrast: 116, saturation: 0, hue: 0 },
-    warm: { brightness: 106, contrast: 105, saturation: 112, hue: -10 }
-  };
-  const preset = looks[name];
-  if (!preset) return;
-  Object.assign(view, preset);
-  applyAdjustments();
-  showToast(`Visual ${name} aplicado`);
-}
-
-function setComparing(active) {
-  view.comparing = active;
-  applyAdjustments();
-}
-
-function toggleFocusMode() {
-  view.focus = !view.focus;
-  dialog.classList.toggle("focusMode", view.focus);
-  focusMode.classList.toggle("active", view.focus);
-  focusMode.querySelector("span") && (focusMode.querySelector("span").textContent = view.focus ? "Reduzir" : "Expandir");
-  requestAnimationFrame(fitPreview);
-}
-
-function cycleViewerBackground() {
-  stageBackgrounds.forEach(cls => imageStage.classList.remove(cls));
-  view.stageBg = (view.stageBg + 1) % stageBackgrounds.length;
-  imageStage.classList.add(stageBackgrounds[view.stageBg]);
-  showToast(["Fundo quadriculado", "Fundo preto", "Fundo branco", "Fundo neutro"][view.stageBg]);
-}
-
-function exportAdjustedImage() {
-  if (!preview.naturalWidth || !preview.naturalHeight) return;
-  const normalizedRotation = ((view.rotation % 360) + 360) % 360;
-  const swap = normalizedRotation === 90 || normalizedRotation === 270;
-  const canvas = document.createElement("canvas");
-  canvas.width = swap ? preview.naturalHeight : preview.naturalWidth;
-  canvas.height = swap ? preview.naturalWidth : preview.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(normalizedRotation * Math.PI / 180);
-  ctx.scale(view.flipX, view.flipY);
-  ctx.filter = `brightness(${view.brightness}%) contrast(${view.contrast}%) saturate(${view.saturation}%) hue-rotate(${view.hue}deg)`;
-  ctx.drawImage(preview, -preview.naturalWidth / 2, -preview.naturalHeight / 2);
-  ctx.restore();
-  canvas.toBlob(blob => {
-    if (!blob) return showToast("Não foi possível exportar a imagem");
-    const item = filteredItems[currentIndex];
-    const base = fileName(item?.pathname || "captura.jpg").replace(/\.[^.]+$/, "");
-    downloadBlob(blob, `${base}-editada.png`);
-    showToast("Imagem ajustada exportada");
-  }, "image/png", 1);
-}
-
-function pointerDistance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function pointerCenter(a, b) {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
 function configureAutoRefresh() {
@@ -681,9 +488,6 @@ dialog.addEventListener("close", () => {
   if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
   currentPreviewUrl = "";
   preview.removeAttribute("src");
-  view.focus = false;
-  dialog.classList.remove("focusMode");
-  resetImageAdjustments();
   resetView();
 });
 dialog.addEventListener("click", event => {
@@ -710,28 +514,10 @@ zoomOut.addEventListener("click", () => setZoom(view.zoom / 1.2));
 zoomValue.addEventListener("click", () => { view.zoom = 1; view.x = 0; view.y = 0; applyTransform(); });
 actualSize.addEventListener("click", () => { view.zoom = 1; view.x = 0; view.y = 0; applyTransform(); });
 fitImage.addEventListener("click", fitPreview);
-fitWidth.addEventListener("click", fitPreviewWidth);
-fitHeight.addEventListener("click", fitPreviewHeight);
 rotateLeft.addEventListener("click", () => { view.rotation -= 90; view.x = 0; view.y = 0; fitPreview(); });
 rotateRight.addEventListener("click", () => { view.rotation += 90; view.x = 0; view.y = 0; fitPreview(); });
 flipImage.addEventListener("click", () => { view.flipX *= -1; applyTransform(); });
-flipVertical.addEventListener("click", () => { view.flipY *= -1; applyTransform(); });
 toggleInfo.addEventListener("click", () => viewerBody.classList.toggle("showInfo"));
-[brightness, contrast, saturation, hue].forEach(input => input.addEventListener("input", () => {
-  view.brightness = Number(brightness.value);
-  view.contrast = Number(contrast.value);
-  view.saturation = Number(saturation.value);
-  view.hue = Number(hue.value);
-  applyAdjustments();
-}));
-resetAdjustments.addEventListener("click", resetImageAdjustments);
-quickLookButtons.forEach(button => button.addEventListener("click", () => applyLook(button.dataset.look)));
-exportEdited.addEventListener("click", exportAdjustedImage);
-focusMode.addEventListener("click", toggleFocusMode);
-cycleStageBg.addEventListener("click", cycleViewerBackground);
-compareOriginal.addEventListener("pointerdown", event => { event.preventDefault(); setComparing(true); });
-["pointerup", "pointercancel", "pointerleave"].forEach(type => compareOriginal.addEventListener(type, () => setComparing(false)));
-
 fullscreen.addEventListener("click", async () => {
   try {
     if (!document.fullscreenElement) await dialog.requestFullscreen();
@@ -753,68 +539,27 @@ imageStage.addEventListener("dblclick", event => {
 });
 
 imageStage.addEventListener("pointerdown", event => {
-  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (view.zoom <= 1 && Math.abs(view.rotation % 180) !== 90) return;
+  view.panning = true;
+  view.pointerX = event.clientX;
+  view.pointerY = event.clientY;
+  view.startX = view.x;
+  view.startY = view.y;
+  imageStage.classList.add("isPanning");
   imageStage.setPointerCapture?.(event.pointerId);
-
-  if (activePointers.size === 2) {
-    const [a, b] = [...activePointers.values()];
-    pinchStartDistance = pointerDistance(a, b);
-    pinchStartZoom = view.zoom;
-    pinchCenter = pointerCenter(a, b);
-    view.panning = false;
-    imageStage.classList.remove("isPanning");
-    return;
-  }
-
-  if (activePointers.size === 1 && (view.zoom > 1 || Math.abs(view.rotation % 180) === 90)) {
-    view.panning = true;
-    view.pointerX = event.clientX;
-    view.pointerY = event.clientY;
-    view.startX = view.x;
-    view.startY = view.y;
-    imageStage.classList.add("isPanning");
-  }
 });
-
 imageStage.addEventListener("pointermove", event => {
-  if (!activePointers.has(event.pointerId)) return;
-  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-  if (activePointers.size === 2) {
-    const [a, b] = [...activePointers.values()];
-    const distance = pointerDistance(a, b);
-    const center = pointerCenter(a, b);
-    if (pinchStartDistance > 0) {
-      const target = pinchStartZoom * (distance / pinchStartDistance);
-      setZoom(target, center.x, center.y);
-      if (pinchCenter) {
-        view.x += center.x - pinchCenter.x;
-        view.y += center.y - pinchCenter.y;
-        pinchCenter = center;
-        applyTransform();
-      }
-    }
-    return;
-  }
-
   if (!view.panning) return;
   view.x = view.startX + (event.clientX - view.pointerX);
   view.y = view.startY + (event.clientY - view.pointerY);
   applyTransform();
 });
-
 function stopPanning(event) {
-  activePointers.delete(event.pointerId);
+  if (!view.panning) return;
+  view.panning = false;
+  imageStage.classList.remove("isPanning");
   imageStage.releasePointerCapture?.(event.pointerId);
-  if (activePointers.size < 2) {
-    pinchStartDistance = 0;
-    pinchCenter = null;
-  }
-  if (activePointers.size === 0) {
-    view.panning = false;
-    imageStage.classList.remove("isPanning");
-    applyTransform();
-  }
+  applyTransform();
 }
 imageStage.addEventListener("pointerup", stopPanning);
 imageStage.addEventListener("pointercancel", stopPanning);
@@ -832,12 +577,5 @@ document.addEventListener("keydown", event => {
   else if (event.key === "-") { event.preventDefault(); setZoom(view.zoom / 1.2); }
   else if (event.key === "0") { event.preventDefault(); fitPreview(); }
   else if (key === "r") { event.preventDefault(); view.rotation += 90; fitPreview(); }
-  else if (key === "f") { event.preventDefault(); toggleFocusMode(); }
-  else if (event.code === "Space") { event.preventDefault(); setComparing(true); }
   else if (key === "d") { event.preventDefault(); download.click(); }
-});
-
-
-document.addEventListener("keyup", event => {
-  if (dialog.open && event.code === "Space") setComparing(false);
 });
