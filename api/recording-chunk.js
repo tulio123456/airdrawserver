@@ -1,0 +1,67 @@
+import { put } from "@vercel/blob";
+
+function allowedOrigin(request) {
+  const origin = (request.headers.get("origin") || "").replace(/\/+$/, "");
+  const allowed = String(process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(x => x.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  return origin && allowed.includes(origin) ? origin : null;
+}
+
+function cors(origin) {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin"
+  };
+}
+
+function clean(value, fallback = "x") {
+  const out = String(value || fallback).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
+  return out || fallback;
+}
+
+function normalizeMime(value) {
+  return String(value || "").toLowerCase().includes("mp4") ? "video/mp4" : "video/webm";
+}
+
+export default {
+  async fetch(request) {
+    const origin = allowedOrigin(request);
+    if (request.method === "OPTIONS") {
+      if (!origin) return Response.json({ error: "Origem não autorizada" }, { status: 403 });
+      return new Response(null, { status: 204, headers: cors(origin) });
+    }
+    if (request.method !== "POST") return Response.json({ error: "Método não permitido" }, { status: 405 });
+    if (!origin) return Response.json({ error: "Origem não autorizada." }, { status: 403 });
+    if (!process.env.BLOB_READ_WRITE_TOKEN) return Response.json({ error: "Blob não conectado." }, { status: 500, headers: cors(origin) });
+
+    try {
+      const url = new URL(request.url);
+      const session = clean(url.searchParams.get("session"), "sem_sessao");
+      const recording = clean(url.searchParams.get("recording"), "gravacao");
+      const seq = Math.max(0, Math.min(9999, Number(url.searchParams.get("seq") || 0) | 0));
+      const mime = normalizeMime(url.searchParams.get("mime"));
+      const bytes = await request.arrayBuffer();
+      if (!bytes.byteLength || bytes.byteLength > 512_000) {
+        return Response.json({ error: "Bloco vazio ou grande demais." }, { status: 413, headers: cors(origin) });
+      }
+
+      const part = new Blob([bytes], { type: "application/octet-stream" });
+      const pathname = `recording-parts/${recording}/${String(seq).padStart(5, "0")}-${session}.part`;
+      const result = await put(pathname, part, {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/octet-stream"
+      });
+
+      return Response.json({ ok: true, pathname: result.pathname, seq, mime }, { status: 201, headers: cors(origin) });
+    } catch (error) {
+      console.error("recording chunk error", error);
+      return Response.json({ error: "Falha ao salvar bloco da gravação." }, { status: 500, headers: cors(origin) });
+    }
+  }
+};
